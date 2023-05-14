@@ -1,0 +1,8 @@
+/venv
+mydata.csv
+ins.py
+/build
+/dist
+.vscode
+main.spec
+download.png
