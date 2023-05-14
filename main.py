@@ -3,6 +3,7 @@ import sqlite3
 from tkinter import messagebox, ttk
 import datetime
 
+
 class TaskForm(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
@@ -25,29 +26,29 @@ class TaskForm(tk.Frame):
         conn.close()
 
     def create_widgets(self):
-        
-        
+
         # Task name label and entry
         self.task_name_label = tk.Label(self, text="اسم المهمة")
         self.task_name_label.grid(column=1, row=0)
-        self.task_name_entry = tk.Entry(self, width=50,justify='right')
+        self.task_name_entry = tk.Entry(self, width=50, justify='right')
         self.task_name_entry.grid(column=0, row=0, padx=10, pady=10)
         # Task status label and dropdown
         self.task_status_label = tk.Label(self, text="حالة المهمة")
         self.task_status_label.grid(column=1, row=1)
         self.task_status_dropdown = ttk.Combobox(
-            self,justify='right', values=["غير منجزة", "منجزة"], width=50)
+            self, justify='right', values=["غير منجزة", "منجزة"], width=50)
         self.task_status_dropdown.grid(column=0, row=1, padx=10, pady=10)
         # Task description label and entry
-        self.task_desc_label = tk.Label(self, text="سبب عدم الإنجاز")
+        self.task_desc_label = tk.Label(
+            self, text="سبب عدم الإنجاز")
         self.task_desc_label.grid(column=1, row=2)
-        self.task_desc_entry = tk.Entry(self, width=50,justify='right')
+        self.task_desc_entry = tk.Entry(self, width=50, justify='right')
         self.task_desc_entry.grid(column=0, row=2, padx=10, pady=10)
         # Assignment label and entry
         self.assignment_label = tk.Label(
             self, text="المسؤول عن التنفيذ")
         self.assignment_label.grid(column=1, row=3)
-        self.assignment_entry = tk.Entry(self, width=50,justify='right')
+        self.assignment_entry = tk.Entry(self, width=50, justify='right')
         self.assignment_entry.grid(column=0, row=3)
 
         # Submit button
@@ -69,7 +70,7 @@ class TaskForm(tk.Frame):
         self.clear_task_button.grid(row=4, column=0, padx=20, pady=20)
         # Task listbox
         self.tree = ttk.Treeview(root, column=(
-            "c1", "c2", 'c3', "c4", "c5",'c6'), show='headings')
+            "c1", "c2", 'c3', "c4", "c5", 'c6'), show='headings')
 
         self.tree.column("#1", anchor=tk.CENTER)
         self.tree.heading("#1", text="رقم المهمة")
@@ -77,10 +78,9 @@ class TaskForm(tk.Frame):
         self.tree.column("#2", anchor=tk.CENTER)
         self.tree.heading("#2", text="اسم المهمة")
 
-        
         self.tree.column("#4", anchor=tk.CENTER)
         self.tree.heading("#4", text="الحالة")
-        
+
         self.tree.column("#3", anchor=tk.CENTER)
         self.tree.heading("#3", text="سبب عدم الإنجاز")
 
@@ -92,30 +92,34 @@ class TaskForm(tk.Frame):
         self.tree.grid(row=6)
         self.tree.bind('<ButtonRelease-1>', self.load_selected_task)
         self.load_tasks()
+
     def check_data(self):
         task_name = self.task_name_entry.get()
         if len(task_name) == 0:
-            return messagebox.showerror('Error','لا يوجد بيانات! ')
-    def submit_form(self):   
+            return messagebox.showerror('Error', 'لا يوجد بيانات! ')
+
+    def submit_form(self):
         # Retrieve form data
         task_name = self.task_name_entry.get()
         task_status = self.task_status_dropdown.get()
         task_desc = self.task_desc_entry.get()
         assignment = self.assignment_entry.get()
-        date_created= datetime.datetime.now().date()
+        date_created = datetime.datetime.now().date()
         if not self.check_data():
-        # Save form data to database
-            msg = messagebox.askyesno('تأكيد', f" اسم المهمة {task_name}\n هل أنت متأكد من الإضافة")
+            # Save form data to database
+            msg = messagebox.askyesno(
+                'تأكيد', f" اسم المهمة {task_name}\n هل أنت متأكد من الإضافة")
             if msg:
                 conn = sqlite3.connect("tasks.db")
                 c = conn.cursor()
                 c.execute("INSERT INTO tasks (name, description, status, assignment, date_created) VALUES (?, ?, ?, ?, ?)",
-                        (task_name, task_desc, task_status, assignment,date_created))
+                          (task_name, task_desc, task_status, assignment, date_created))
                 conn.commit()
                 conn.close()
         # Clear form fields and reload tasks
                 self.clear_task()
                 self.load_tasks()
+
     def update_form(self):
         # Retrieve form data
         task_name = self.task_name_entry.get()
@@ -123,33 +127,36 @@ class TaskForm(tk.Frame):
         task_status = self.task_status_dropdown.get()
         assignment = self.assignment_entry.get()
         # Get selected task from listbox
-        
+
         select = self.tree.focus()
         if not select:
             return
-        task_id=self.tree.item(select)['values'][0]
+        task_id = self.tree.item(select)['values'][0]
         if not self.check_data():
-            msg = messagebox.askyesno('تأكيد', f" اسم المهمة {task_name}\n هل أنت متأكد من التحديث")
+            msg = messagebox.askyesno(
+                'تأكيد', f" اسم المهمة {task_name}\n هل أنت متأكد من التحديث")
             # Update task in database
             if msg:
                 conn = sqlite3.connect("tasks.db")
                 c = conn.cursor()
                 c.execute("UPDATE tasks SET name = ?, description = ?, status = ?, assignment = ? WHERE id = ?",
-                        (task_name, task_desc, task_status, assignment, task_id,))
+                          (task_name, task_desc, task_status, assignment, task_id,))
                 conn.commit()
                 conn.close()
                 # Clear form fields and reload tasks
                 self.clear_task()
                 self.load_tasks()
+
     def delete_task(self):
         # Retrieve form data
         # Get selected task from listbox
         select = self.tree.focus()
         if not select:
             return
-        task_id=self.tree.item(select)['values'][0]
+        task_id = self.tree.item(select)['values'][0]
         if not self.check_data():
-            msg = messagebox.askyesno('تأكيد', f" هل أنت متأكد من الحذف")
+            msg = messagebox.askyesno(
+                'تأكيد', f" هل أنت متأكد من الحذف")
             # Update task in database
             if msg:
                 conn = sqlite3.connect("tasks.db")
@@ -161,8 +168,7 @@ class TaskForm(tk.Frame):
             # Clear form fields and reload tasks
                 self.clear_task()
                 self.load_tasks()
-        
-        
+
     def load_tasks(self):
         self.tree.delete(*self.tree.get_children())
         # Load tasks from database and add to listbox
@@ -176,12 +182,13 @@ class TaskForm(tk.Frame):
             conn.close()
         except:
             print('ok')
+
     def load_selected_task(self, event):
         # Get selected task from listbox
         select = self.tree.focus()
         if not select:
             return
-        task_id=self.tree.item(select)['values'][0]
+        task_id = self.tree.item(select)['values'][0]
         # Load selected task from database and display in form
         conn = sqlite3.connect("tasks.db")
         c = conn.cursor()
@@ -195,6 +202,7 @@ class TaskForm(tk.Frame):
         self.assignment_entry.delete(0, tk.END)
         self.assignment_entry.insert(0, row[4])
         conn.close()
+
     def clear_task(self):
         self.task_name_entry.delete(0, tk.END)
         self.task_desc_entry.delete(0, tk.END)
@@ -207,6 +215,6 @@ class TaskForm(tk.Frame):
 root = tk.Tk()
 root.title("المهام اليومية")
 photo = tk.PhotoImage(file='muasah.png')
-root.iconphoto(False,photo)
+root.iconphoto(False, photo)
 form = TaskForm(master=root)
 form.mainloop()
