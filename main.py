@@ -55,7 +55,6 @@ class TaskForm(tk.Frame):
         self.submit_button = tk.Button(
             self, text="إضافة", command=self.submit_form, width=20)
         self.submit_button.grid(column=1, row=4, padx=10, pady=10, sticky='W')
-
         # Update button
         self.update_button = tk.Button(
             self, text="تحديث", command=self.update_form, width=20)
@@ -174,15 +173,12 @@ class TaskForm(tk.Frame):
         # Load tasks from database and add to listbox
         conn = sqlite3.connect("tasks.db")
         c = conn.cursor()
-        try:
-            c.execute("SELECT * FROM tasks")
-            rows = c.fetchall()
-            for row in rows:
-                self.tree.insert("", tk.END, values=(row))
-            conn.close()
-        except:
-            print('ok')
-
+        c.execute("SELECT * FROM tasks")
+        rows = c.fetchall()
+        for row in rows:
+            self.tree.insert("", tk.END, values=(row))
+        conn.close()
+        
     def load_selected_task(self, event):
         # Get selected task from listbox
         select = self.tree.focus()
@@ -214,7 +210,5 @@ class TaskForm(tk.Frame):
 
 root = tk.Tk()
 root.title("المهام اليومية")
-photo = tk.PhotoImage(file='muasah.png')
-root.iconphoto(False, photo)
 form = TaskForm(master=root)
 form.mainloop()
