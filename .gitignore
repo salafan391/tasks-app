@@ -6,3 +6,4 @@ ins.py
 .vscode
 main.spec
 download.png
+*.db

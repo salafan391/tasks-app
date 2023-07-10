@@ -1,214 +1,285 @@
-import tkinter as tk
+import sys
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, \
+    QLineEdit, QComboBox, QTableWidget, QTableWidgetItem, QMessageBox, QStyledItemDelegate,QTabWidget
+from PyQt5.QtGui import QColor, QFont, QIcon, QCursor
+from PyQt5.QtCore import Qt, QDateTime
 import sqlite3
-from tkinter import messagebox, ttk
-import datetime
+from test import *
 
 
-class TaskForm(tk.Frame):
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.master = master
-        self.grid()
-        self.create_table
-        self.create_widgets()
+class HoverButton(QPushButton):
+    def __init__(self, text):
+        super().__init__(text)
+
+    def enterEvent(self, event):
+        self.setCursor(QCursor(Qt.PointingHandCursor))
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.unsetCursor()
+        super().leaveEvent(event)
+
+
+class BorderDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        painter.save()
+
+        # Set text color based on the status
+        if index.column() == 3:  # Column index of the status
+            status = index.data()
+            if status == "منجزة":
+                # Green text color for status 'أنجزت'
+                painter.setPen(QColor("#00FF00"))
+            elif status == 'منجزة':
+                painter.setPen(QColor("#00FF00"))
+
+            else:
+                # Red text color for other statuses
+                painter.setPen(QColor("#FF0000"))
+        else:
+            # Black text color for other columns
+            painter.setPen(QColor(0, 0, 0))
+        # Set font style
+        font = QFont()
+        font.setBold(True)  # Set font to bold
+        font.setPointSize(12)  # Set font size to 12
+        painter.setFont(font)
+
+        # Draw cell text centered
+        painter.drawText(option.rect, Qt.AlignCenter, index.data())
+
+        painter.restore()
+
+
+class TaskForm(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("المهام اليومية")
+        self.setGeometry(120, 120, 800, 600)
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.layout = QVBoxLayout()
+        self.central_widget.setLayout(self.layout)
+        self.task_name_label = QLabel("اسم المهمة:")
+        self.task_name_entry = QLineEdit()
+        self.task_status_label = QLabel("الحالة:")
+        self.task_status_dropdown = QComboBox()
+        self.task_status_dropdown.addItem("تحت الإجراء")
+        self.task_status_dropdown.addItem("غير منجزة")
+        self.task_status_dropdown.addItem("أنجزت")
+        self.task_desc_label = QLabel("سبب عدم الإنجاز")
+        self.task_desc_entry = QLineEdit()
+        self.button_layout = QHBoxLayout()
+        self.submit_button = HoverButton("إضـــــــافة")
+        self.submit_button.clicked.connect(self.submit_form)
+        self.submit_button.setStyleSheet(
+            "background-color: #2B2A4C; color: white; padding:8px; border:0; border-radius:3px")
+        self.update_button = HoverButton("تحديث")
+        self.update_button.clicked.connect(self.update_form)
+        self.update_button.setStyleSheet(
+            "background-color: #EA906C; color: white; padding:8px; border:0; border-radius:3px")
+        self.delete_button = HoverButton("حذف")
+        self.delete_button.clicked.connect(self.delete_task)
+        # Set the background color of the delete button to red
+        self.delete_button.setStyleSheet(
+            "background-color: #B31312; color:white;padding:8px; border:0; border-radius:3px ")
+        self.show_table_button = HoverButton('عرض البيانات')
+        # Set the background color of the delete button to red
+        self.show_table_button.setStyleSheet(
+            "background-color: #9376E0; color:white;padding:8px; border:0; border-radius:3px ")
+        self.show_table_button.clicked.connect(self.load_tasks)
+        self.button_layout.addWidget(self.submit_button)
+        self.button_layout.addWidget(self.update_button)
+        self.button_layout.addWidget(self.delete_button)
+        self.button_layout.addWidget(self.show_table_button)
+        self.table = QTableWidget()
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(["رقم المهمة", "اسم المهمة",
+                                             "سبب عدم الإنجاز", "الحالة", "تاريخ إنشاء المهمة"])
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.itemSelectionChanged.connect(self.load_selected_task)
+        self.layout.addWidget(self.task_name_label)
+        self.layout.addWidget(self.task_name_entry)
+        self.layout.addWidget(self.task_status_label)
+        self.layout.addWidget(self.task_status_dropdown)
+        self.layout.addWidget(self.task_desc_label)
+        self.layout.addWidget(self.task_desc_entry)
+        self.layout.addLayout(self.button_layout)
+        self.layout.addWidget(self.table)
+        self.create_table()
+
+    def check_data(self):
+        task_name = self.task_name_entry.text()
+        if len(task_name) == 0:
+            QMessageBox.critical(self, "خطأ", "لم تدخل بيانات!")
+            return False
+        return True
 
     def create_table(self):
         conn = sqlite3.connect('tasks.db')
-
-# create a cursor
-        c = conn.cursor()
-        # create tasks table if it doesn't exist already
-        c.execute("CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY,name text, status text,description text,,assignment text,date_created text);")
-
-        # commit changes
-        conn.commit()
-        # close connection
-        conn.close()
-
-    def create_widgets(self):
-
-        # Task name label and entry
-        self.task_name_label = tk.Label(self, text="اسم المهمة")
-        self.task_name_label.grid(column=1, row=0)
-        self.task_name_entry = tk.Entry(self, width=50, justify='right')
-        self.task_name_entry.grid(column=0, row=0, padx=10, pady=10)
-        # Task status label and dropdown
-        self.task_status_label = tk.Label(self, text="حالة المهمة")
-        self.task_status_label.grid(column=1, row=1)
-        self.task_status_dropdown = ttk.Combobox(
-            self, justify='right', values=["غير منجزة", "منجزة"], width=50)
-        self.task_status_dropdown.grid(column=0, row=1, padx=10, pady=10)
-        # Task description label and entry
-        self.task_desc_label = tk.Label(
-            self, text="سبب عدم الإنجاز")
-        self.task_desc_label.grid(column=1, row=2)
-        self.task_desc_entry = tk.Entry(self, width=50, justify='right')
-        self.task_desc_entry.grid(column=0, row=2, padx=10, pady=10)
-        # Assignment label and entry
-        self.assignment_label = tk.Label(
-            self, text="المسؤول عن التنفيذ")
-        self.assignment_label.grid(column=1, row=3)
-        self.assignment_entry = tk.Entry(self, width=50, justify='right')
-        self.assignment_entry.grid(column=0, row=3)
-
-        # Submit button
-        self.submit_button = tk.Button(
-            self, text="إضافة", command=self.submit_form, width=20)
-        self.submit_button.grid(column=1, row=4, padx=10, pady=10, sticky='W')
-        # Update button
-        self.update_button = tk.Button(
-            self, text="تحديث", command=self.update_form, width=20)
-        self.update_button.grid(column=0, row=4, sticky='W', padx=10)
-
-        self.delete_task_button = tk.Button(
-            self.master, text="حذف مهمة", command=self.delete_task)
-        self.delete_task_button.grid(
-            row=4, column=0, padx=20, pady=20, sticky='W')
-        self.clear_task_button = tk.Button(
-            self.master, text="تصفية", command=self.clear_task)
-        self.clear_task_button.grid(row=4, column=0, padx=20, pady=20)
-        # Task listbox
-        self.tree = ttk.Treeview(root, column=(
-            "c1", "c2", 'c3', "c4", "c5", 'c6'), show='headings')
-
-        self.tree.column("#1", anchor=tk.CENTER)
-        self.tree.heading("#1", text="رقم المهمة")
-
-        self.tree.column("#2", anchor=tk.CENTER)
-        self.tree.heading("#2", text="اسم المهمة")
-
-        self.tree.column("#4", anchor=tk.CENTER)
-        self.tree.heading("#4", text="الحالة")
-
-        self.tree.column("#3", anchor=tk.CENTER)
-        self.tree.heading("#3", text="سبب عدم الإنجاز")
-
-        self.tree.column("#5", anchor=tk.CENTER)
-        self.tree.heading("#5", text="الموظف")
-        self.tree.column("#6", anchor=tk.CENTER)
-        self.tree.heading("#6", text="التاريخ")
-
-        self.tree.grid(row=6)
-        self.tree.bind('<ButtonRelease-1>', self.load_selected_task)
-        self.load_tasks()
-
-    def check_data(self):
-        task_name = self.task_name_entry.get()
-        if len(task_name) == 0:
-            return messagebox.showerror('Error', 'لا يوجد بيانات! ')
+        curr = conn.cursor()
+        create_table_query = '''CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY,
+                                name TEXT,
+                                description TEXT,
+                                status TEXT,
+                                date_created TEXT
+        )'''
+        curr.execute(create_table_query)
 
     def submit_form(self):
-        # Retrieve form data
-        task_name = self.task_name_entry.get()
-        task_status = self.task_status_dropdown.get()
-        task_desc = self.task_desc_entry.get()
-        assignment = self.assignment_entry.get()
-        date_created = datetime.datetime.now().date()
+        task_name = self.task_name_entry.text()
+        task_status = self.task_status_dropdown.currentText()
+        task_desc = self.task_desc_entry.text()
+        date_created = QDateTime.currentDateTime().toString(Qt.ISODate)
+
         if not self.check_data():
-            # Save form data to database
-            msg = messagebox.askyesno(
-                'تأكيد', f" اسم المهمة {task_name}\n هل أنت متأكد من الإضافة")
-            if msg:
-                conn = sqlite3.connect("tasks.db")
-                c = conn.cursor()
-                c.execute("INSERT INTO tasks (name, description, status, assignment, date_created) VALUES (?, ?, ?, ?, ?)",
-                          (task_name, task_desc, task_status, assignment, date_created))
-                conn.commit()
-                conn.close()
-        # Clear form fields and reload tasks
-                self.clear_task()
-                self.load_tasks()
+            return
+
+        msg_box = QMessageBox.question(self, "تأكيد",
+                                       f"اسم المهمة: {task_name}\n\nهل أنت متأكد من إضافة ?",
+                                       QMessageBox.Yes | QMessageBox.No)
+        if msg_box == QMessageBox.Yes:
+            conn = sqlite3.connect("tasks.db")
+            c = conn.cursor()
+            c.execute("INSERT INTO tasks (name, description, status, date_created) VALUES (?, ?, ?, ?)",
+                      (task_name, task_desc, task_status, date_created))
+            conn.commit()
+            conn.close()
+            self.clear_task()
+            self.load_tasks()
 
     def update_form(self):
-        # Retrieve form data
-        task_name = self.task_name_entry.get()
-        task_desc = self.task_desc_entry.get()
-        task_status = self.task_status_dropdown.get()
-        assignment = self.assignment_entry.get()
-        # Get selected task from listbox
-
-        select = self.tree.focus()
+        select = self.table.selectedItems()
         if not select:
+            QMessageBox.critical(self, "خطأ", "لم تختر مهمة!")
             return
-        task_id = self.tree.item(select)['values'][0]
+        task_id = select[0].text()
+        task_name = self.task_name_entry.text()
+        task_status = self.task_status_dropdown.currentText()
+        task_desc = self.task_desc_entry.text()
         if not self.check_data():
-            msg = messagebox.askyesno(
-                'تأكيد', f" اسم المهمة {task_name}\n هل أنت متأكد من التحديث")
-            # Update task in database
-            if msg:
-                conn = sqlite3.connect("tasks.db")
-                c = conn.cursor()
-                c.execute("UPDATE tasks SET name = ?, description = ?, status = ?, assignment = ? WHERE id = ?",
-                          (task_name, task_desc, task_status, assignment, task_id,))
-                conn.commit()
-                conn.close()
-                # Clear form fields and reload tasks
-                self.clear_task()
-                self.load_tasks()
-
-    def delete_task(self):
-        # Retrieve form data
-        # Get selected task from listbox
-        select = self.tree.focus()
-        if not select:
             return
-        task_id = self.tree.item(select)['values'][0]
-        if not self.check_data():
-            msg = messagebox.askyesno(
-                'تأكيد', f" هل أنت متأكد من الحذف")
-            # Update task in database
-            if msg:
-                conn = sqlite3.connect("tasks.db")
-                c = conn.cursor()
-                c.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
-                conn.commit()
-                conn.close()
 
-            # Clear form fields and reload tasks
-                self.clear_task()
-                self.load_tasks()
+        msg_box = QMessageBox.question(self, "تأكيد",
+                                       f"اسم المهمة: {task_name}\n\nهل أنت متأكد من تحديث ?",
+                                       QMessageBox.Yes | QMessageBox.No)
+        if msg_box == QMessageBox.Yes:
+            conn = sqlite3.connect("tasks.db")
+            c = conn.cursor()
+            c.execute("UPDATE tasks SET name=?, description=?, status=? WHERE id=?",
+                      (task_name, task_desc, task_status, task_id))
+            conn.commit()
+            conn.close()
+            self.clear_task()
+            self.load_tasks()
 
     def load_tasks(self):
-        self.tree.delete(*self.tree.get_children())
-        # Load tasks from database and add to listbox
         conn = sqlite3.connect("tasks.db")
         c = conn.cursor()
         c.execute("SELECT * FROM tasks")
         rows = c.fetchall()
+        conn.close()
+
+        self.table.setRowCount(0)
+        font = QFont()
         for row in rows:
-            self.tree.insert("", tk.END, values=(row))
-        conn.close()
-        
-    def load_selected_task(self, event):
-        # Get selected task from listbox
-        select = self.tree.focus()
+            self.table.insertRow(self.table.rowCount())
+            for i in range(len(row)):
+                item = QTableWidgetItem(str(row[i]))
+                if i == 3:  # Column index of the status
+                    status = str(row[i])
+                    if status == "منجزة" or status == 'أنجزت':
+                        # Set green background for status 'أنجزت'
+                        item.setForeground(QColor('#090580'))
+                        font.setBold(True)
+                        item.setFont(font)
+                    else:
+                        # Set red background for other statuses
+                        item.setForeground(QColor('#B70404'))
+                        item.setFont(font)
+                item.setTextAlignment(Qt.AlignCenter)
+
+                self.table.setItem(self.table.rowCount() - 1, i, item)
+        self.table.setStyleSheet("""
+                QTableWidget QTableCornerButton::section,
+                QTableWidget QHeaderView::section,
+                QTableWidget{
+                    border: 1px solid black;
+                }
+                QTableWidget::item {
+                    border: 1px solid black;
+                    padding: 0px;
+                }
+                QTableWidget::item:selected {
+                    background-color: #A9D0F5;  /* Set the background color of the selected row */
+                }
+            """)
+        self.table.resizeColumnsToContents(
+        )  # Resize columns automatically based on cell contents
+        self.table.setLayoutDirection(Qt.RightToLeft)
+
+    def load_selected_task(self):
+        select = self.table.selectedItems()
         if not select:
+            # Clear the form fields and return
+            self.clear_task()
             return
-        task_id = self.tree.item(select)['values'][0]
-        # Load selected task from database and display in form
-        conn = sqlite3.connect("tasks.db")
+
+        task_id = select[0].text()
+
+        conn = sqlite3.connect('tasks.db')
         c = conn.cursor()
-        c.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+        c.execute("SELECT * FROM tasks WHERE id=?", (task_id,))
         row = c.fetchone()
-        self.task_name_entry.delete(0, tk.END)
-        self.task_name_entry.insert(0, row[1])
-        self.task_desc_entry.delete(0, tk.END)
-        self.task_desc_entry.insert(0, row[2])
-        self.task_status_dropdown.set(row[3])
-        self.assignment_entry.delete(0, tk.END)
-        self.assignment_entry.insert(0, row[4])
         conn.close()
+
+        self.task_name_entry.setText(row[1] if row else '')
+        self.task_desc_entry.setText(row[2] if row else '')
+        self.task_status_dropdown.setCurrentText(row[3] if row else '')
+
+    def delete_task(self):
+        select = self.table.selectedItems()
+        if not select:
+            QMessageBox.critical(self, "Error", "No task selected!")
+            return
+        task_id = select[0].text()
+        task_name = select[1].text()
+
+        msg_box = QMessageBox.question(self, "تأكيد",
+                                       f"اسم المهمة: {task_name}\n\nهل أنت متأكد من حذف ?",
+                                       QMessageBox.Yes | QMessageBox.No)
+        if msg_box == QMessageBox.Yes:
+            conn = sqlite3.connect("tasks.db")
+            c = conn.cursor()
+            c.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+            conn.commit()
+            conn.close()
+            self.clear_task()
+            self.load_tasks()
 
     def clear_task(self):
-        self.task_name_entry.delete(0, tk.END)
-        self.task_desc_entry.delete(0, tk.END)
-        self.assignment_entry.delete(0, tk.END)
-        self.task_status_dropdown.set("")
-        for item in self.tree.selection():
-            self.tree.selection_remove(item)
+        self.task_name_entry.clear()
+        self.task_desc_entry.clear()
+        self.task_status_dropdown.setCurrentIndex(0)
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.setGeometry(120, 120, 800, 600)
+        self.tab_widget = QTabWidget()
+        self.user_tab = User()
+        self.task_tab = TaskForm()
+        self.employee_tab = EmployeeTrackerGUI()
+        self.tab_widget.addTab(self.task_tab, "المهام اليومية")
+        self.tab_widget.addTab(self.employee_tab, "الحضور والانصراف")        
+        self.tab_widget.addTab(self.user_tab,'المستخدم')
 
 
-root = tk.Tk()
-root.title("المهام اليومية")
-form = TaskForm(master=root)
-form.mainloop()
+        self.setCentralWidget(self.tab_widget)
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    task_form = MainWindow()
+    task_form.show()
+    sys.exit(app.exec_())
